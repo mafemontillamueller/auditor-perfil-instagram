@@ -572,6 +572,54 @@
     .msb-level { font-size: 11px; color: rgba(255,255,255,.6); }
     .msb-btn { background: rgba(255,255,255,.15); border: none; color: #fff; border-radius: 6px; padding: 6px 12px; font-size: 12px; font-weight: 500; cursor: pointer; font-family: inherit; white-space: nowrap; }
 
+    /* ── Lead Gate ── */
+    #lead-gate {
+      margin: 0 0 2rem;
+      border-radius: 20px;
+      overflow: hidden;
+      border: 1.5px solid rgba(244,184,184,.25);
+      background: linear-gradient(160deg, #1a1a1a 0%, #111 100%);
+    }
+    .gate-inner {
+      padding: 2.5rem 2rem 1.5rem;
+      text-align: center;
+    }
+    .gate-badge {
+      display: inline-flex; align-items: center; gap: 6px;
+      background: rgba(244,184,184,.15); color: #f4b8b8;
+      font-size: .75rem; font-weight: 600; letter-spacing: .06em; text-transform: uppercase;
+      padding: 5px 14px; border-radius: 100px; margin-bottom: 1.2rem;
+    }
+    .gate-title {
+      font-size: 1.65rem; font-weight: 800; color: #fff;
+      margin: 0 0 .75rem; letter-spacing: -.02em;
+    }
+    .gate-sub {
+      color: #aaa; font-size: .95rem; line-height: 1.6;
+      max-width: 440px; margin: 0 auto 1.5rem;
+    }
+    .gate-form-wrap {
+      background: #fff; border-radius: 14px; overflow: hidden;
+      max-width: 480px; margin: 0 auto;
+    }
+    .gate-skip {
+      background: none; border: none; color: #666;
+      font-size: .8rem; cursor: pointer; margin-top: 1rem;
+      font-family: inherit; text-decoration: underline;
+      padding: 6px;
+    }
+    .gate-skip:hover { color: #f4b8b8; }
+    .gate-preview-blur {
+      padding: 1rem 2rem 1.5rem;
+      opacity: .35; pointer-events: none;
+    }
+    .gate-blur-row {
+      height: 14px; background: #444; border-radius: 8px;
+      margin-bottom: 10px; filter: blur(3px);
+    }
+    .gate-blur-row.short { width: 60%; }
+    .gate-blur-row.mid   { width: 80%; }
+
     /* ── Floating CTA ── */
     .float-cta {
       position: fixed; bottom: 120px; right: 28px; z-index: 200;
@@ -1185,6 +1233,43 @@
       <p class="report-summary" id="rep-summary"></p>
     </div>
 
+    <!-- ── LEAD GATE ── -->
+    <div id="lead-gate">
+      <div class="gate-inner">
+        <div class="gate-badge"><i class="ti ti-lock-open"></i> Desbloquea tu análisis completo</div>
+        <h2 class="gate-title">Tu reporte está listo</h2>
+        <p class="gate-sub">Deja tus datos para ver el diagnóstico completo, tus puntos de mejora y el plan de acción personalizado.</p>
+        <div class="gate-form-wrap">
+          <iframe
+            src="https://api.leadconnectorhq.com/widget/form/hF3rD5AQjLQkIVgNapYR"
+            id="ghl-form-iframe"
+            data-layout='{"id":"INLINE"}'
+            data-trigger-type="alwaysShow"
+            data-trigger-value=""
+            data-activation-type="alwaysActivated"
+            data-activation-value=""
+            data-deactivation-type="neverDeactivate"
+            data-deactivation-value=""
+            data-form-id="hF3rD5AQjLQkIVgNapYR"
+            data-layout-iframe-id="inline-hF3rD5AQjLQkIVgNapYR"
+            title="Formulario de acceso al reporte"
+            style="width:100%;border:none;min-height:420px;transition:height .3s;">
+          </iframe>
+          <script src="https://link.msgsndr.com/js/form-embed/v2.js"></script>
+        </div>
+        <button class="gate-skip" onclick="unlockReport(true)">Ya tengo cuenta, ver reporte directamente →</button>
+      </div>
+      <div class="gate-preview-blur" aria-hidden="true">
+        <div class="gate-blur-row"></div>
+        <div class="gate-blur-row short"></div>
+        <div class="gate-blur-row"></div>
+        <div class="gate-blur-row mid"></div>
+      </div>
+    </div>
+
+    <!-- ── LOCKED CONTENT (shown after gate) ── -->
+    <div id="report-locked" style="display:none">
+
     <!-- Prediction reveal -->
     <div id="rep-prediction-reveal"></div>
 
@@ -1320,6 +1405,8 @@
     <div style="text-align:center; padding-bottom: 20px;">
       <button class="btn btn-dark" onclick="location.reload()"><i class="ti ti-refresh" aria-hidden="true"></i> Nueva auditoría</button>
     </div>
+
+    </div><!-- /#report-locked -->
   </div>
 
   <!-- Floating CTA: Reunión estratégica -->
@@ -3722,10 +3809,51 @@ function analyzeLocally() {
   };
 }
 
+// ── Lead Gate ─────────────────────────────────────────────────────────────────
+function unlockReport(manual) {
+  localStorage.setItem('ghl_lead_captured', '1');
+  const gate = document.getElementById('lead-gate');
+  const locked = document.getElementById('report-locked');
+  if (gate) {
+    gate.style.transition = 'opacity .4s, transform .4s';
+    gate.style.opacity = '0';
+    gate.style.transform = 'translateY(-10px)';
+    setTimeout(() => { gate.style.display = 'none'; }, 400);
+  }
+  if (locked) {
+    locked.style.display = 'block';
+    locked.style.opacity = '0';
+    locked.style.transition = 'opacity .5s';
+    setTimeout(() => { locked.style.opacity = '1'; }, 50);
+  }
+}
+
+// Listen for GHL form submission via postMessage
+window.addEventListener('message', function(e) {
+  try {
+    const data = typeof e.data === 'string' ? JSON.parse(e.data) : e.data;
+    if (
+      data && (
+        data.type === 'form_submitted' ||
+        data.event === 'form_submitted' ||
+        (data.type && data.type.toString().toLowerCase().includes('submit'))
+      )
+    ) { unlockReport(false); }
+  } catch(_) {}
+});
+
 // ── Render report ─────────────────────────────────────────────────────────────
 function renderReport(r) {
   document.getElementById('loading').classList.remove('active');
   document.getElementById('report-view').classList.add('active');
+
+  // If lead already captured, skip gate immediately
+  if (localStorage.getItem('ghl_lead_captured')) {
+    const gate = document.getElementById('lead-gate');
+    const locked = document.getElementById('report-locked');
+    if (gate) gate.style.display = 'none';
+    if (locked) locked.style.display = 'block';
+  }
 
   // Score circle — animated counter
   const score = r.score_global || 0;
