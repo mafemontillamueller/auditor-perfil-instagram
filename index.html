@@ -3830,17 +3830,36 @@ function unlockReport(manual) {
 
 // Listen for GHL form submission via postMessage
 window.addEventListener('message', function(e) {
+  const ghlOrigins = ['leadconnectorhq.com', 'msgsndr.com', 'gohighlevel.com'];
+  const fromGHL = ghlOrigins.some(o => (e.origin || '').includes(o));
   try {
     const data = typeof e.data === 'string' ? JSON.parse(e.data) : e.data;
+    if (!data) return;
+    const typeStr = (data.type || data.event || data.eventName || '').toString().toLowerCase();
     if (
-      data && (
-        data.type === 'form_submitted' ||
-        data.event === 'form_submitted' ||
-        (data.type && data.type.toString().toLowerCase().includes('submit'))
-      )
+      typeStr.includes('submit') || typeStr.includes('success') ||
+      typeStr.includes('complete') || typeStr.includes('thank') ||
+      (fromGHL && typeStr && !typeStr.includes('resize') && !typeStr.includes('load') && !typeStr.includes('height'))
     ) { unlockReport(false); }
-  } catch(_) {}
+  } catch(_) { if (fromGHL) unlockReport(false); }
 });
+
+function startGateFallbackTimer() {
+  setTimeout(function() {
+    const gate = document.getElementById('lead-gate');
+    if (!gate || gate.style.display === 'none') return;
+    let fb = document.getElementById('gate-fallback-btn');
+    if (!fb) {
+      fb = document.createElement('button');
+      fb.id = 'gate-fallback-btn';
+      fb.textContent = '✓ Ya envié el formulario — Ver mi reporte';
+      fb.style.cssText = 'display:block;margin:12px auto 0;background:linear-gradient(135deg,#f9a8c9,#f4b8b8);color:#5a1a2e;border:none;border-radius:12px;padding:12px 24px;font-size:.9rem;font-weight:700;cursor:pointer;font-family:inherit;';
+      fb.onclick = function() { unlockReport(true); };
+      const wrap = gate.querySelector('.gate-form-wrap');
+      if (wrap) wrap.parentNode.insertBefore(fb, wrap.nextSibling);
+    }
+  }, 8000);
+}
 
 // ── Render report ─────────────────────────────────────────────────────────────
 function renderReport(r) {
@@ -3853,6 +3872,8 @@ function renderReport(r) {
     const locked = document.getElementById('report-locked');
     if (gate) gate.style.display = 'none';
     if (locked) locked.style.display = 'block';
+  } else {
+    startGateFallbackTimer();
   }
 
   // Score circle — animated counter
